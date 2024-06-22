@@ -1,0 +1,27 @@
+{
+  "name": "webcrawler_http",
+  "version": "1.0.0",
+  "description": "Webcrawler JS project for Boot.Dev Learn HTTP",
+  "main": "main.js",
+  "type": "module",
+  "scripts": {
+    "start": "node main.js",
+    "test": "node --experimental-vm-modules node_modules/jest/test.js"
+  },
+  "jest": {
+    "transform": {}
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/runner989/webcrawler_http.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/runner989/webcrawler_http/issues"
+  },
+  "homepage": "https://github.com/runner989/webcrawler_http#readme",
+  "devDependencies": {
+    "jest": "^29.7.0"
+  }
+}
