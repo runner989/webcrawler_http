@@ -1,6 +1,5 @@
-import { getURLsFromHTML, crawlPage } from "./crawl.js";
-// import { argv } from 'node:process';
-// import fetch from 'node-fetch';
+import { crawlPage } from "./crawl.js";
+import { printReport } from "./report.js";
 
 async function main() {
     const args = process.argv.slice(2);
@@ -17,8 +16,7 @@ async function main() {
     
     console.log(`Starting crawler at ${baseURL}`);
     const pages = await crawlPage(baseURL);
-    console.log("Crawling result:");
-    console.log(pages);
+    printReport(pages);
 }    
 
 main();
