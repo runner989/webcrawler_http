@@ -1,6 +1,6 @@
 import { URL } from 'node:url';
 import { JSDOM } from 'jsdom';
-
+import fetch from 'node-fetch';
 
 function normalizeURL(Url) {
     const parsedURL = new URL(Url);
@@ -38,6 +38,29 @@ function getURLsFromHTML(htmlBody, baseURL) {
     return urls;
 }
 
+async function crawlPage(currentURL) {
+    try {
+        const response = await fetch(currentURL);
 
-export { normalizeURL, getURLsFromHTML };
+        if (response.status >= 400) {
+            console.error(`Error: Received status code ${response.status} for ${currentURL}`);
+            return;
+        }
+        
+        const contentType = response.headers.get('content-type');
+        if (!contentType || !contentType.includes('text/html')) {
+            console.error(`Error: Received non-HTML content-type ${contentType} for ${currentURL}`);
+            return;
+        }
+
+        const htmlBody = await response.text();
+        console.log(htmlBody);
+    } catch (error) {
+        console.error(`Error during fetching ${currentURL}: ${error.message}`);
+    }
+
+}
+
+
+export { normalizeURL, getURLsFromHTML, crawlPage };
 
