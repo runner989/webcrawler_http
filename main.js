@@ -1,6 +1,6 @@
 import { getURLsFromHTML, crawlPage } from "./crawl.js";
-import { argv } from 'node:process';
-import fetch from 'node-fetch';
+// import { argv } from 'node:process';
+// import fetch from 'node-fetch';
 
 async function main() {
     const args = process.argv.slice(2);
@@ -14,23 +14,11 @@ async function main() {
         process.exit(1);
     }
     const baseURL = args[0];
+    
     console.log(`Starting crawler at ${baseURL}`);
-
-    await crawlPage(baseURL);
-    // try {
-    //     const response = await fetch(baseURL);
-    //     if (!response.ok) {
-    //       throw new Error(`Failed to fetch ${baseURL}: ${response.statusText}`);
-    //     }
-    
-    //     const htmlBody = await response.text();
-    //     const urls = getURLsFromHTML(htmlBody, baseURL);
-    
-    //     console.log('Found URLs:');
-    //     urls.forEach(url => console.log(url));
-    // } catch (error) {
-    //     console.error(`Error during crawling: ${error.message}`);
-    // }
+    const pages = await crawlPage(baseURL);
+    console.log("Crawling result:");
+    console.log(pages);
 }    
 
 main();

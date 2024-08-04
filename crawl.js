@@ -2,63 +2,113 @@ import { URL } from 'node:url';
 import { JSDOM } from 'jsdom';
 import fetch from 'node-fetch';
 
-function normalizeURL(Url) {
-    const parsedURL = new URL(Url);
-    const hostname = parsedURL.hostname;
-    let pathname = parsedURL.pathname;
-
-    if (pathname.endsWith('/')) {
-        pathname = pathname.slice(0, -1);
+function normalizeURL(url, baseURL) {
+    try {
+        const parsedURL = new URL(url, baseURL);
+        let { hostname, pathname } = parsedURL;
+        if (pathname.endsWith('/')) {
+            pathname = pathname.slice(0, -1);
+        }
+        return `${hostname}${pathname}`;
+    } catch (err) {
+        console.log(`Error normalizing URL: ${url} - ${err.message}`);
+        return null;
     }
-
-    return `${hostname}${pathname}`;
 }
 
 function getURLsFromHTML(htmlBody, baseURL) {
+    const urls = [];
     const dom = new JSDOM(htmlBody);
     const anchorElements = dom.window.document.querySelectorAll('a');
-    const urls = [];
 
     anchorElements.forEach(anchor => {
         let href = anchor.getAttribute('href');
         if (href) {
             try {
-                const url = new URL(href, baseURL);
-                if(!url.href.includes('invalid-url')){
-                    const normalizedUrl = normalizeURL(url.href);
-                    if (normalizedUrl) {
-                        urls.push(normalizedUrl);
-                    }
+                href = new URL(href, baseURL).href;
+                if (!shouldFilterURL(href)) {
+                    urls.push(href);
                 }
             } catch (err) {
-                console.error(`Invalid URL: $(href)`);
-            }
-        }
+                console.log(`${err.message}: ${href}`);
+            }; 
+        };
     });
     return urls;
+
 }
 
-async function crawlPage(currentURL) {
+function shouldFilterURL(url) {
+    const disallowedExtensions = ['.xml', '.jpg', '.jpeg', '.png', '.gif', '.pdf', '.doc', '.docx', '.ppt', '.pptx', '.xls', '.xlsx'];
+    return disallowedExtensions.some(ext => url.endsWith(ext));
+}
+
+async function fetchHTML(url) {
+    console.log(`Fetching ${url}`);
+    let response;
     try {
-        const response = await fetch(currentURL);
+        response = await fetch(url);
+    } catch (err) {
+        throw new Error(`Got Network error: ${err.message}`);
+    }   
+    if (response.status >= 400) {
+      throw new Error(`Error: Received status code ${response.status} for ${url}`);
+    }
+  
+    const contentType = response.headers.get('content-type');
+    if (!contentType || !contentType.includes('text/html')) {
+      throw new Error(`Error: Received non-HTML content-type ${contentType} for ${url}`);
+    }
+    return response.text();
+  }
 
-        if (response.status >= 400) {
-            console.error(`Error: Received status code ${response.status} for ${currentURL}`);
-            return;
-        }
-        
-        const contentType = response.headers.get('content-type');
-        if (!contentType || !contentType.includes('text/html')) {
-            console.error(`Error: Received non-HTML content-type ${contentType} for ${currentURL}`);
-            return;
-        }
+async function crawlPage(baseURL, currentURL = baseURL, pages = {}, visited = new Set()) {
+    const baseDomain = new URL(baseURL).hostname;
+    const currentDomain = new URL(currentURL).hostname;
 
-        const htmlBody = await response.text();
-        console.log(htmlBody);
-    } catch (error) {
-        console.error(`Error during fetching ${currentURL}: ${error.message}`);
+    // Step 1: Check if currentURL is on the same domain as baseURL
+    if (baseDomain !== currentDomain) {
+        console.log(`Skipping ${currentURL} - not on the same domain as ${baseURL}`);
+        return pages;
     }
 
+    // Step 2: Get normalized version of currentURL
+    const normalizedURL = normalizeURL(currentURL, baseURL);
+    if (!normalizedURL) {
+        console.error(`Skipping invalid normalized URL: ${currentURL}`);
+        return pages;
+    }
+
+    // Step 3: Check if the URL has already been visited
+    if (visited.has(normalizedURL)) {
+        console.log(`Already visited ${normalizedURL}`);
+    }
+    visited.add(normalizedURL);
+    
+    // Step 4: Handle page count in the pages object    
+    if (pages[normalizedURL]) {
+        pages[normalizedURL]++;
+        return pages;
+    }
+    pages[normalizedURL] = 1;
+
+    let htmlBody = '';
+    try {
+        // Step 5: Fetch and parse HTML
+        htmlBody = await fetchHTML(currentURL);
+    } catch (err) {
+        console.log(`${err.message}`);
+        return pages;
+    }
+    
+    // Step 6: get all URLs from the html body
+    const urls = getURLsFromHTML(htmlBody, baseURL);        
+    // Step 7: Recursively crawl each URL
+    for (const url of urls) {
+        await crawlPage(baseURL, url, pages, visited);
+    }
+
+    return pages;
 }
 
 
